@@ -1,5 +1,9 @@
 <?php
 // api.php - Backend API für Volketswil Umfrage
+error_reporting(E_ALL);
+ini_set('display_errors', 0); // Nicht in Production anzeigen
+ini_set('log_errors', 1);
+
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: POST, GET, OPTIONS');
@@ -10,6 +14,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     http_response_code(200);
     exit();
 }
+
+// Logging-Funktion
+function logDebug($message, $data = null) {
+    $logMessage = date('Y-m-d H:i:s') . ' - ' . $message;
+    if ($data !== null) {
+        $logMessage .= ' - ' . json_encode($data);
+    }
+    error_log($logMessage);
+}
+
+logDebug('API Request', [
+    'method' => $_SERVER['REQUEST_METHOD'],
+    'action' => $_GET['action'] ?? 'none',
+    'uri' => $_SERVER['REQUEST_URI']
+]);
 
 // Datenbank-Konfiguration
 require_once 'config.php';
@@ -25,9 +44,11 @@ try {
             PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC
         ]
     );
+    logDebug('Database connected successfully');
 } catch (PDOException $e) {
+    logDebug('Database connection failed', ['error' => $e->getMessage()]);
     http_response_code(500);
-    echo json_encode(['error' => 'Datenbankverbindung fehlgeschlagen']);
+    echo json_encode(['error' => 'Datenbankverbindung fehlgeschlagen', 'details' => $e->getMessage()]);
     exit();
 }
 
@@ -35,10 +56,27 @@ try {
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     
     $input = file_get_contents('php://input');
+    logDebug('POST data received', ['length' => strlen($input)]);
+    
     $data = json_decode($input, true);
+    
+    if (json_last_error() !== JSON_ERROR_NONE) {
+        logDebug('JSON decode error', ['error' => json_last_error_msg()]);
+        http_response_code(400);
+        echo json_encode(['error' => 'Ungültige JSON-Daten: ' . json_last_error_msg()]);
+        exit();
+    }
+    
+    logDebug('Decoded data', [
+        'has_userData' => isset($data['userData']),
+        'has_responses' => isset($data['responses']),
+        'has_timestamp' => isset($data['timestamp']),
+        'response_count' => isset($data['responses']) ? count($data['responses']) : 0
+    ]);
     
     // Validierung
     if (!isset($data['userData']) || !isset($data['responses']) || !isset($data['timestamp'])) {
+        logDebug('Missing required fields');
         http_response_code(400);
         echo json_encode(['error' => 'Fehlende Daten']);
         exit();
@@ -49,8 +87,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $timestamp = $data['timestamp'];
     $responses = $data['responses'];
     
+    logDebug('Validated data', [
+        'name' => $name,
+        'email' => $email,
+        'timestamp' => $timestamp,
+        'response_count' => count($responses)
+    ]);
+    
     // E-Mail-Validierung
     if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        logDebug('Invalid email', ['email' => $email]);
         http_response_code(400);
         echo json_encode(['error' => 'Ungültige E-Mail-Adresse']);
         exit();
@@ -59,6 +105,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     try {
         // Transaktion starten
         $pdo->beginTransaction();
+        logDebug('Transaction started');
         
         // Teilnehmer speichern
         $stmt = $pdo->prepare("
@@ -72,6 +119,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         ]);
         
         $participantId = $pdo->lastInsertId();
+        logDebug('Participant inserted', ['id' => $participantId]);
         
         // Antworten speichern
         $stmt = $pdo->prepare("
@@ -79,36 +127,46 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             VALUES (:participant_id, :question_id, :response_value)
         ");
         
+        $savedCount = 0;
         foreach ($responses as $questionId => $responseValue) {
             $stmt->execute([
                 ':participant_id' => $participantId,
                 ':question_id' => $questionId,
                 ':response_value' => $responseValue
             ]);
+            $savedCount++;
         }
         
+        logDebug('Responses inserted', ['count' => $savedCount]);
+        
         $pdo->commit();
+        logDebug('Transaction committed');
         
         // E-Mail senden
         try {
             sendSummaryEmail($email, $name, $responses, $pdo);
+            logDebug('Email sent successfully');
         } catch (Exception $e) {
             // E-Mail-Fehler sollte nicht die gesamte Anfrage scheitern lassen
-            error_log('E-Mail-Fehler: ' . $e->getMessage());
+            logDebug('Email error (non-fatal)', ['error' => $e->getMessage()]);
         }
         
         http_response_code(201);
         echo json_encode([
             'success' => true,
             'message' => 'Daten erfolgreich gespeichert',
-            'participantId' => $participantId
+            'participantId' => $participantId,
+            'responsesCount' => $savedCount
         ]);
         
     } catch (PDOException $e) {
         $pdo->rollBack();
+        logDebug('Database error', ['error' => $e->getMessage()]);
         http_response_code(500);
-        echo json_encode(['error' => 'Fehler beim Speichern der Daten']);
-        error_log('Database error: ' . $e->getMessage());
+        echo json_encode([
+            'error' => 'Fehler beim Speichern der Daten',
+            'details' => $e->getMessage()
+        ]);
     }
     
     exit();
