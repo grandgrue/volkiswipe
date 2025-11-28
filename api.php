@@ -87,10 +87,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $timestamp = $data['timestamp'];
     $responses = $data['responses'];
     
+    // ISO-8601 Timestamp in MySQL Format konvertieren
+    try {
+        $dateTime = new DateTime($timestamp);
+        $mysqlTimestamp = $dateTime->format('Y-m-d H:i:s');
+    } catch (Exception $e) {
+        logDebug('Invalid timestamp format', ['timestamp' => $timestamp]);
+        http_response_code(400);
+        echo json_encode(['error' => 'Ungültiges Zeitformat']);
+        exit();
+    }
+    
     logDebug('Validated data', [
         'name' => $name,
         'email' => $email,
-        'timestamp' => $timestamp,
+        'timestamp' => $mysqlTimestamp,
         'response_count' => count($responses)
     ]);
     
@@ -115,7 +126,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmt->execute([
             ':name' => $name,
             ':email' => $email,
-            ':timestamp' => $timestamp
+            ':timestamp' => $mysqlTimestamp
         ]);
         
         $participantId = $pdo->lastInsertId();
