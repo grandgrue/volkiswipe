@@ -564,13 +564,30 @@
                                             const isCompleted = idx < currentChapter;
                                             const isCurrent = idx === currentChapter;
                                             
+                                            // Debug-Logging
+                                            console.log('Kategorie', idx, cat.name, '- currentChapter:', currentChapter, '- isCompleted:', isCompleted, '- isCurrent:', isCurrent);
+                                            
+                                            // Farben direkt bestimmen
+                                            let backgroundColor = '#ffffff'; // weiß (offen)
+                                            let color = '#6b7280'; // grau
+                                            let fontWeight = '400';
+                                            
+                                            if (isCompleted) {
+                                                backgroundColor = '#dcfce7'; // grün
+                                                color = '#166534';
+                                            } else if (isCurrent) {
+                                                backgroundColor = '#dbeafe'; // blau
+                                                color = '#1e40af';
+                                                fontWeight = '600';
+                                            }
+                                            
                                             return (
                                                 <div 
                                                     key={idx}
                                                     style={{
-                                                        backgroundColor: isCompleted ? '#dcfce7' : isCurrent ? '#dbeafe' : '#ffffff',
-                                                        color: isCompleted ? '#166534' : isCurrent ? '#1e40af' : '#6b7280',
-                                                        fontWeight: isCurrent ? '600' : '400'
+                                                        backgroundColor: backgroundColor,
+                                                        color: color,
+                                                        fontWeight: fontWeight
                                                     }}
                                                     className="flex items-center gap-2 p-2 rounded text-xs"
                                                 >
@@ -599,6 +616,12 @@
                                                 <span>Noch offen</span>
                                             </div>
                                         </div>
+                                    </div>
+                                    {/* Debug-Info */}
+                                    <div className="mt-2 p-2 bg-yellow-50 rounded text-xs">
+                                        <strong>Debug:</strong> currentChapter = {currentChapter}, 
+                                        categories.length = {categories.length},
+                                        currentIndex = {currentIndex}
                                     </div>
                                 </div>
                                 
