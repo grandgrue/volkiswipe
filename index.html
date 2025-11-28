@@ -76,6 +76,8 @@
             const [error, setError] = useState(null);
             const [lastSavedIndex, setLastSavedIndex] = useState(-1);
             const [participantId, setParticipantId] = useState(null);
+            const [showChapterIntro, setShowChapterIntro] = useState(true);
+            const [currentChapter, setCurrentChapter] = useState(null);
 
             // WICHTIG: Hier Ihre Domain eintragen!
             const API_URL = './api.php';
@@ -128,7 +130,29 @@
             };
 
             const currentCategory = questions[currentIndex]?.category_name;
+            const currentCategoryIndex = questions[currentIndex]?.category;
             const progress = questions.length > 0 ? ((currentIndex + 1) / questions.length) * 100 : 0;
+
+            // Prüfen ob neue Kategorie begonnen hat
+            useEffect(() => {
+                if (currentStep === 'survey' && questions.length > 0 && currentIndex > 0) {
+                    const prevCategoryIndex = questions[currentIndex - 1]?.category;
+                    const currCategoryIndex = questions[currentIndex]?.category;
+                    
+                    if (prevCategoryIndex !== currCategoryIndex) {
+                        setCurrentChapter(currCategoryIndex);
+                        setShowChapterIntro(true);
+                    }
+                }
+            }, [currentIndex, currentStep, questions]);
+
+            // Chapter-Intro bei Start der Umfrage
+            useEffect(() => {
+                if (currentStep === 'survey' && questions.length > 0 && currentIndex === 0) {
+                    setCurrentChapter(0);
+                    setShowChapterIntro(true);
+                }
+            }, [currentStep, questions]);
 
             // Auto-Save Funktion (ohne E-Mail)
             const autoSave = async () => {
@@ -464,6 +488,91 @@
 
             // Survey-Screen
             if (currentStep === 'survey') {
+                
+                // Chapter-Intro anzeigen
+                if (showChapterIntro && currentChapter !== null) {
+                    const chapterCategory = categories[currentChapter];
+                    const questionsInChapter = questions.filter(q => q.category === currentChapter).length;
+                    const completedQuestions = currentIndex;
+                    const totalQuestions = questions.length;
+                    const percentComplete = Math.round((completedQuestions / totalQuestions) * 100);
+                    
+                    // Berechne wie viele Kategorien schon abgeschlossen sind
+                    const completedCategories = currentChapter;
+                    const totalCategories = categories.length;
+                    
+                    return (
+                        <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 flex items-center justify-center p-4">
+                            <div className="bg-white rounded-2xl shadow-xl p-8 max-w-lg w-full">
+                                {currentIndex === 0 ? (
+                                    // Start der Umfrage
+                                    <>
+                                        <div className="text-center mb-6">
+                                            <div className="text-6xl mb-4">🚀</div>
+                                            <h2 className="text-2xl font-bold text-green-700 mb-2">Los geht's!</h2>
+                                            <p className="text-gray-600">Bereit für die ersten Fragen?</p>
+                                        </div>
+                                    </>
+                                ) : (
+                                    // Neue Kategorie
+                                    <>
+                                        <div className="text-center mb-6">
+                                            <div className="text-6xl mb-4">{chapterCategory?.icon}</div>
+                                            <h2 className="text-2xl font-bold text-green-700 mb-2">
+                                                {chapterCategory?.name}
+                                            </h2>
+                                            <p className="text-sm text-gray-500">
+                                                {questionsInChapter} {questionsInChapter === 1 ? 'Frage' : 'Fragen'} in diesem Kapitel
+                                            </p>
+                                        </div>
+                                        
+                                        <div className="mb-6 p-4 bg-green-50 rounded-lg">
+                                            <div className="flex items-center justify-between mb-2">
+                                                <span className="text-sm font-semibold text-green-700">Ihr Fortschritt:</span>
+                                                <span className="text-lg font-bold text-green-700">{percentComplete}%</span>
+                                            </div>
+                                            <div className="w-full bg-green-200 rounded-full h-3 mb-2">
+                                                <div 
+                                                    className="bg-green-600 h-3 rounded-full transition-all duration-300"
+                                                    style={{ width: `${percentComplete}%` }}
+                                                />
+                                            </div>
+                                            <p className="text-xs text-gray-600 text-center">
+                                                {completedQuestions} von {totalQuestions} Fragen beantwortet
+                                            </p>
+                                        </div>
+                                        
+                                        <div className="p-4 bg-blue-50 rounded-lg mb-6">
+                                            <p className="text-sm font-semibold text-blue-900 mb-2">
+                                                ✅ Geschafft: {completedCategories} {completedCategories === 1 ? 'Kapitel' : 'Kapitel'}
+                                            </p>
+                                            <p className="text-sm text-blue-700">
+                                                💪 Weiter so! Sie machen das großartig!
+                                            </p>
+                                        </div>
+                                    </>
+                                )}
+                                
+                                <div className="space-y-3">
+                                    <button
+                                        onClick={() => setShowChapterIntro(false)}
+                                        className="w-full bg-green-600 text-white py-3 rounded-lg font-semibold hover:bg-green-700 transition"
+                                    >
+                                        {currentIndex === 0 ? 'Erste Frage anzeigen' : 'Weiter zu den Fragen'}
+                                    </button>
+                                    
+                                    {currentIndex > 0 && (
+                                        <div className="text-center text-xs text-gray-400">
+                                            💾 Ihre Antworten werden regelmäßig automatisch gespeichert
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    );
+                }
+                
+                // Normale Fragen-Ansicht
                 return (
                     <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 flex flex-col">
                         <div className="bg-white shadow-sm p-4">
