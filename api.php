@@ -380,7 +380,7 @@ function sendSummaryEmail($email, $name, $responses, $pdo) {
     ];
     
     // E-Mail-Inhalt erstellen
-    $subject = 'Ihre Teilnahme: 100 Wuensche fuer Volketswil';
+    $subject = 'Ihre Teilnahme: 100 Wünsche für Volketswil';
     
     // Funktion zum Erstellen der Listen
     function createQuestionList($questions) {
@@ -415,26 +415,27 @@ function sendSummaryEmail($email, $name, $responses, $pdo) {
             .section-egal { background-color: #f9fafb; border-left: 4px solid #6b7280; }
             .section h3 { margin-top: 0; margin-bottom: 15px; }
             .footer { background-color: #f3f4f6; padding: 20px; text-align: center; font-size: 12px; color: #666; margin-top: 30px; }
+            .signature { background-color: #f0fdf4; padding: 20px; border-radius: 8px; margin-top: 30px; }
         </style>
     </head>
     <body>
         <div class='header'>
-            <h1>🎄 Vielen Dank fuer Ihre Teilnahme!</h1>
+            <h1>🎄 Vielen Dank für Ihre Teilnahme!</h1>
         </div>
         <div class='content'>
             <p style='font-size: 18px;'>Liebe/r $name,</p>
-            <p>Herzlichen Dank, dass Sie sich die Zeit genommen haben, an der Befragung teilzunehmen. 
-            Ihre Meinung ist wichtig fuer die Zukunft von Volketswil.</p>
+            <p>Herzlichen Dank, dass Sie sich die Zeit genommen haben, an meiner Befragung «100 Wünsche für Volketswil» teilzunehmen. 
+            Ihre Meinung hilft mir sehr zu verstehen, was den Menschen in Volketswil wirklich wichtig ist.</p>
             
             <div class='stats'>
-                <h3 style='margin-top: 0;'>Ihre Antworten im Ueberblick:</h3>
+                <h3 style='margin-top: 0;'>📊 Ihre Antworten im Überblick:</h3>
                 <div class='stat-item'>✅ <strong>Sehr wichtig:</strong> {$stats['sehr_wichtig']} Themen</div>
                 <div class='stat-item'>👍 <strong>Wichtig:</strong> {$stats['wichtig']} Themen</div>
                 <div class='stat-item'>👎 <strong>Unwichtig:</strong> {$stats['unwichtig']} Themen</div>
                 <div class='stat-item'>😐 <strong>Egal / Weiss nicht:</strong> {$stats['egal']} Themen</div>
             </div>
             
-            <h2 style='color: #16a34a; margin-top: 40px;'>Ihre detaillierten Antworten:</h2>
+            <h2 style='color: #16a34a; margin-top: 40px;'>📋 Ihre detaillierten Antworten:</h2>
             
             <div class='section section-sehr-wichtig'>
                 <h3 style='color: #16a34a;'>✅ Sehr wichtig ({$stats['sehr_wichtig']})</h3>
@@ -456,19 +457,26 @@ function sendSummaryEmail($email, $name, $responses, $pdo) {
                 " . createQuestionList($categorized['egal']) . "
             </div>
             
-            <p style='margin-top: 40px;'>
-                In den kommenden Wochen werden wir die Ergebnisse aller Teilnehmenden auswerten 
-                und die wichtigsten Themen fuer Volketswil identifizieren.
-            </p>
-            
-            <p style='margin-top: 20px;'>
-                Mit freundlichen Gruessen<br>
-                <strong>Michael Gruebler</strong><br>
-                Kandidat Gemeinderat Volketswil
-            </p>
+            <div class='signature'>
+                <p style='margin-bottom: 15px;'>
+                    In den kommenden Wochen werde ich die Ergebnisse aller Teilnehmenden auswerten. 
+                    Falls ich als Gemeinderat gewählt werde, weiss ich dann genau, wofür ich mich einsetzen soll.
+                </p>
+                <p style='margin-bottom: 15px;'>
+                    Ihre Stimme zählt! Die Ergebnisse dieser Befragung helfen mir sehr zu verstehen, 
+                    was die Bedürfnisse der Bevölkerung von Volketswil wirklich sind.
+                </p>
+                <p style='margin-top: 25px; margin-bottom: 5px;'>
+                    Mit herzlichen Grüssen
+                </p>
+                <p style='margin: 0;'>
+                    <strong style='font-size: 16px;'>Michael Grüebler</strong><br>
+                    <span style='color: #666;'>Kandidat Gemeinderat Volketswil</span>
+                </p>
+            </div>
         </div>
         <div class='footer'>
-            <p>Diese E-Mail wurde automatisch generiert im Rahmen der Befragung '100 Wuensche fuer Volketswil'.</p>
+            <p>Diese E-Mail wurde automatisch generiert im Rahmen der Befragung «100 Wünsche für Volketswil».</p>
         </div>
     </body>
     </html>
@@ -478,12 +486,12 @@ function sendSummaryEmail($email, $name, $responses, $pdo) {
     $headers = "MIME-Version: 1.0" . "\r\n";
     $headers .= "Content-type:text/html;charset=UTF-8" . "\r\n";
     
-    // Sender-Name korrekt kodieren (RFC 2047)
+    // Sender-Name OHNE Umlaute kodieren (RFC 2047)
     $senderName = '=?UTF-8?B?' . base64_encode('Michael Gruebler - Volketswil') . '?=';
     $headers .= "From: " . $senderName . " <noreply@volkiswipe.ch>" . "\r\n";
     $headers .= "Reply-To: " . $senderName . " <noreply@volkiswipe.ch>" . "\r\n";
     
-    // Subject auch kodieren
+    // Subject MIT Umlauten (wird automatisch kodiert)
     $encodedSubject = '=?UTF-8?B?' . base64_encode($subject) . '?=';
     
     // E-Mail senden
