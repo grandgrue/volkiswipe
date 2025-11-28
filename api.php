@@ -330,6 +330,7 @@ function sendSummaryEmail($email, $name, $responses, $pdo) {
     $message = "
     <html>
     <head>
+        <meta charset='UTF-8'>
         <style>
             body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
             .header { background-color: #16a34a; color: white; padding: 20px; text-align: center; }
@@ -341,29 +342,29 @@ function sendSummaryEmail($email, $name, $responses, $pdo) {
     </head>
     <body>
         <div class='header'>
-            <h1>Vielen Dank für Ihre Teilnahme!</h1>
+            <h1>Vielen Dank fuer Ihre Teilnahme!</h1>
         </div>
         <div class='content'>
             <p>Liebe/r $name,</p>
             <p>Herzlichen Dank, dass Sie sich die Zeit genommen haben, an unserer Umfrage teilzunehmen. 
-            Ihre Meinung ist wichtig für die Zukunft von Volketswil.</p>
+            Ihre Meinung ist wichtig fuer die Zukunft von Volketswil.</p>
             
             <div class='stats'>
-                <h3>Ihre Antworten im Überblick:</h3>
+                <h3>Ihre Antworten im Ueberblick:</h3>
                 <div class='stat-item'>✅ <strong>Sehr wichtig:</strong> {$stats['sehr_wichtig']} Themen</div>
                 <div class='stat-item'>👍 <strong>Wichtig:</strong> {$stats['wichtig']} Themen</div>
                 <div class='stat-item'>👎 <strong>Unwichtig:</strong> {$stats['unwichtig']} Themen</div>
                 <div class='stat-item'>😐 <strong>Egal:</strong> {$stats['egal']} Themen</div>
             </div>
             
-            <p>Ihre Prioritäten zeigen, dass Ihnen besonders die Themen am Herzen liegen, 
+            <p>Ihre Prioritaeten zeigen, dass Ihnen besonders die Themen am Herzen liegen, 
             die Sie als 'sehr wichtig' oder 'wichtig' bewertet haben.</p>
             
             <p>In den kommenden Wochen werden wir die Ergebnisse aller Teilnehmenden auswerten 
-            und die wichtigsten Themen für Volketswil identifizieren.</p>
+            und die wichtigsten Themen fuer Volketswil identifizieren.</p>
             
-            <p>Mit freundlichen Grüssen<br>
-            <strong>Michael Grüebler</strong><br>
+            <p>Mit freundlichen Gruessen<br>
+            <strong>Michael Gruebler</strong><br>
             Kandidat Gemeinderat Volketswil</p>
         </div>
         <div class='footer'>
@@ -373,13 +374,20 @@ function sendSummaryEmail($email, $name, $responses, $pdo) {
     </html>
     ";
     
-    // E-Mail-Header
+    // E-Mail-Header mit korrekter Kodierung
     $headers = "MIME-Version: 1.0" . "\r\n";
     $headers .= "Content-type:text/html;charset=UTF-8" . "\r\n";
-    $headers .= "From: Michael Grüebler <noreply@volkiswipe.ch>" . "\r\n";
+    
+    // Sender-Name korrekt kodieren (RFC 2047)
+    $senderName = '=?UTF-8?B?' . base64_encode('Michael Gruebler - Volketswil') . '?=';
+    $headers .= "From: " . $senderName . " <noreply@volkiswipe.ch>" . "\r\n";
+    $headers .= "Reply-To: " . $senderName . " <noreply@volkiswipe.ch>" . "\r\n";
+    
+    // Subject auch kodieren
+    $encodedSubject = '=?UTF-8?B?' . base64_encode($subject) . '?=';
     
     // E-Mail senden
-    if (!mail($email, $subject, $message, $headers)) {
+    if (!mail($email, $encodedSubject, $message, $headers)) {
         throw new Exception('E-Mail konnte nicht gesendet werden');
     }
 }
