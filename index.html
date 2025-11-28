@@ -569,8 +569,8 @@
                                             const isCompleted = currentCategoryIdx !== -1 && idx < currentCategoryIdx;
                                             const isCurrent = currentCategoryIdx !== -1 && idx === currentCategoryIdx;
                                             
-                                            // Debug-Logging
-                                            console.log('Kategorie', idx, cat.name, '- currentCategoryName:', currentCategoryName, '- currentCategoryIdx:', currentCategoryIdx, '- isCompleted:', isCompleted, '- isCurrent:', isCurrent);
+                                            // Anzahl Fragen in dieser Kategorie zählen
+                                            const questionsInCategory = questions.filter(q => q.category_name === cat.name).length;
                                             
                                             // Farben direkt bestimmen
                                             let backgroundColor = '#ffffff'; // weiß (offen)
@@ -600,7 +600,7 @@
                                                         {isCompleted ? '✅' : isCurrent ? '▶️' : cat.icon}
                                                     </span>
                                                     <span className="flex-1 leading-tight">
-                                                        {cat.name}
+                                                        {cat.name} ({questionsInCategory})
                                                     </span>
                                                 </div>
                                             );
@@ -621,12 +621,6 @@
                                                 <span>Noch offen</span>
                                             </div>
                                         </div>
-                                    </div>
-                                    {/* Debug-Info */}
-                                    <div className="mt-2 p-2 bg-yellow-50 rounded text-xs">
-                                        <strong>Debug:</strong> currentCategoryName = {questions[currentIndex]?.category_name}, 
-                                        currentCategoryIdx = {categories.findIndex(c => c.name === questions[currentIndex]?.category_name)},
-                                        currentIndex = {currentIndex}
                                     </div>
                                 </div>
                                 
