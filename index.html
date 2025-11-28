@@ -563,23 +563,16 @@
                                         {categories.map((cat, idx) => {
                                             const isCompleted = idx < currentChapter;
                                             const isCurrent = idx === currentChapter;
-                                            const isUpcoming = idx > currentChapter;
-                                            
-                                            let bgClass = 'bg-white';
-                                            let textClass = 'text-gray-500';
-                                            
-                                            if (isCompleted) {
-                                                bgClass = 'bg-green-100';
-                                                textClass = 'text-green-800';
-                                            } else if (isCurrent) {
-                                                bgClass = 'bg-blue-100';
-                                                textClass = 'text-blue-800 font-semibold';
-                                            }
                                             
                                             return (
                                                 <div 
                                                     key={idx}
-                                                    className={`flex items-center gap-2 p-2 rounded text-xs ${bgClass} ${textClass}`}
+                                                    style={{
+                                                        backgroundColor: isCompleted ? '#dcfce7' : isCurrent ? '#dbeafe' : '#ffffff',
+                                                        color: isCompleted ? '#166534' : isCurrent ? '#1e40af' : '#6b7280',
+                                                        fontWeight: isCurrent ? '600' : '400'
+                                                    }}
+                                                    className="flex items-center gap-2 p-2 rounded text-xs"
                                                 >
                                                     <span className="text-base">
                                                         {isCompleted ? '✅' : isCurrent ? '▶️' : cat.icon}
