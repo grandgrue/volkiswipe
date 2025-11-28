@@ -114,10 +114,85 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     exit();
 }
 
-// GET-Request: Statistiken abrufen (für Admin-Dashboard)
+// GET-Request: Fragen laden oder Statistiken abrufen
 if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     
-    // Einfache Authentifizierung (später durch besseres System ersetzen)
+    $action = $_GET['action'] ?? 'stats';
+    
+    // Fragen für Frontend laden (öffentlich zugänglich)
+    if ($action === 'getQuestions') {
+        try {
+            // Fragen mit Kategorie-Info laden
+            $stmt = $pdo->query("
+                SELECT 
+                    q.id,
+                    q.category,
+                    q.text,
+                    q.sort_order
+                FROM questions q
+                WHERE q.active = 1
+                ORDER BY q.sort_order
+            ");
+            $questions = $stmt->fetchAll();
+            
+            // Kategorien mit Icons definieren
+            $categoryMap = [
+                'Verkehr & Mobilität' => '🚲',
+                'Wohnen & Siedlungsentwicklung' => '🏘️',
+                'Bildung & Kinderbetreuung' => '🎓',
+                'Wirtschaft & Arbeit' => '💼',
+                'Natur, Umwelt & Energie' => '🌳',
+                'Infrastruktur & Versorgung' => '🏗️',
+                'Gesundheit & Soziales' => '❤️',
+                'Kultur, Freizeit & Sport' => '🎨',
+                'Sicherheit' => '🛡️',
+                'Finanzen & Steuern' => '💰',
+                'Politik & Verwaltung' => '🏛️',
+                'Generationenthemen' => '👨‍👩‍👧‍👦',
+                'Landwirtschaft & Landschaft' => '🌾',
+                'Digitalisierung & Innovation' => '💻',
+                'Demokratie & Mitbestimmung' => '🗳️',
+                'Strategische Entwicklung & Planung' => '📊',
+                'Zentrum & Ortsteile' => '🏙️',
+                'Regionale Zusammenarbeit' => '🤝',
+                'Quartierentwicklung' => '🏘️'
+            ];
+            
+            // Fragen mit Icon anreichern
+            foreach ($questions as &$question) {
+                $question['category_name'] = $question['category'];
+                $question['category_icon'] = $categoryMap[$question['category']] ?? '📋';
+            }
+            
+            // Unique Kategorien extrahieren
+            $categories = [];
+            $seenCategories = [];
+            foreach ($questions as $question) {
+                if (!in_array($question['category'], $seenCategories)) {
+                    $categories[] = [
+                        'name' => $question['category'],
+                        'icon' => $question['category_icon']
+                    ];
+                    $seenCategories[] = $question['category'];
+                }
+            }
+            
+            echo json_encode([
+                'success' => true,
+                'questions' => $questions,
+                'categories' => $categories
+            ]);
+            exit();
+            
+        } catch (PDOException $e) {
+            http_response_code(500);
+            echo json_encode(['error' => 'Fehler beim Laden der Fragen']);
+            error_log('Database error: ' . $e->getMessage());
+            exit();
+        }
+    }
+    
+    // Statistiken abrufen (nur mit Token)
     $authToken = $_GET['token'] ?? '';
     if ($authToken !== ADMIN_TOKEN) {
         http_response_code(401);

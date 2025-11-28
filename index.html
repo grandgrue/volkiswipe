@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Volketswil mitgestalten - Michael Grüebler</title>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            margin: 0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+        .animate-spin {
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+
+        // Lucide Icons als SVG-Komponenten
+        const ChevronUp = ({ size = 24, className = "" }) => (
+            <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+                <polyline points="18 15 12 9 6 15"></polyline>
+            </svg>
+        );
+
+        const ChevronDown = ({ size = 24, className = "" }) => (
+            <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+                <polyline points="6 9 12 15 18 9"></polyline>
+            </svg>
+        );
+
+        const ChevronLeft = ({ size = 24, className = "" }) => (
+            <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+                <polyline points="15 18 9 12 15 6"></polyline>
+            </svg>
+        );
+
+        const ChevronRight = ({ size = 24, className = "" }) => (
+            <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+                <polyline points="9 18 15 12 9 6"></polyline>
+            </svg>
+        );
+
+        const Send = ({ size = 24, className = "" }) => (
+            <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+                <line x1="22" y1="2" x2="11" y2="13"></line>
+                <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+            </svg>
+        );
+
+        const SurveyApp = () => {
+            const [currentStep, setCurrentStep] = useState('intro');
+            const [userData, setUserData] = useState({ name: '', email: '' });
+            const [currentIndex, setCurrentIndex] = useState(0);
+            const [responses, setResponses] = useState({});
+            const [swipeDirection, setSwipeDirection] = useState(null);
+            const [touchStart, setTouchStart] = useState(null);
+            const [isSubmitting, setIsSubmitting] = useState(false);
+            const [questions, setQuestions] = useState([]);
+            const [categories, setCategories] = useState([]);
+            const [isLoading, setIsLoading] = useState(true);
+            const [error, setError] = useState(null);
+
+            // WICHTIG: Hier Ihre Domain eintragen!
+            const API_URL = './api.php';
+
+            // Fragen von der Datenbank laden
+            useEffect(() => {
+                loadQuestions();
+            }, []);
+
+            const loadQuestions = async () => {
+                try {
+                    const response = await fetch(API_URL + '?action=getQuestions');
+                    if (!response.ok) throw new Error('Fehler beim Laden der Fragen');
+                    
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        setQuestions(data.questions);
+                        setCategories(data.categories);
+                        setIsLoading(false);
+                    } else {
+                        throw new Error(data.error || 'Unbekannter Fehler');
+                    }
+                } catch (err) {
+                    console.error('Fehler beim Laden:', err);
+                    setError('Fragen konnten nicht geladen werden. Bitte laden Sie die Seite neu.');
+                    setIsLoading(false);
+                }
+            };
+
+            const currentCategory = questions[currentIndex]?.category_name;
+            const progress = questions.length > 0 ? ((currentIndex + 1) / questions.length) * 100 : 0;
+
+            const handleSwipe = (direction) => {
+                // Geänderte Zuordnung: rechts = wichtig, links = unwichtig, oben = sehr wichtig, unten = egal
+                const responseValue = {
+                    up: 'sehr_wichtig',
+                    right: 'wichtig',
+                    down: 'egal',
+                    left: 'unwichtig'
+                }[direction];
+
+                const questionId = questions[currentIndex]?.id;
+
+                setResponses({
+                    ...responses,
+                    [questionId]: responseValue
+                });
+
+                setSwipeDirection(direction);
+                setTimeout(() => {
+                    setSwipeDirection(null);
+                    if (currentIndex < questions.length - 1) {
+                        setCurrentIndex(currentIndex + 1);
+                    } else {
+                        setCurrentStep('complete');
+                    }
+                }, 300);
+            };
+
+            const handleTouchStart = (e) => {
+                setTouchStart({
+                    x: e.touches[0].clientX,
+                    y: e.touches[0].clientY
+                });
+            };
+
+            const handleTouchEnd = (e) => {
+                if (!touchStart) return;
+
+                const deltaX = e.changedTouches[0].clientX - touchStart.x;
+                const deltaY = e.changedTouches[0].clientY - touchStart.y;
+                const threshold = 50;
+
+                if (Math.abs(deltaX) > Math.abs(deltaY)) {
+                    if (Math.abs(deltaX) > threshold) {
+                        handleSwipe(deltaX > 0 ? 'right' : 'left');
+                    }
+                } else {
+                    if (Math.abs(deltaY) > threshold) {
+                        handleSwipe(deltaY < 0 ? 'up' : 'down');
+                    }
+                }
+                setTouchStart(null);
+            };
+
+            useEffect(() => {
+                const handleKeyDown = (e) => {
+                    if (currentStep !== 'survey') return;
+                    
+                    switch(e.key) {
+                        case 'ArrowUp': handleSwipe('up'); break;
+                        case 'ArrowRight': handleSwipe('right'); break;
+                        case 'ArrowDown': handleSwipe('down'); break;
+                        case 'ArrowLeft': handleSwipe('left'); break;
+                        default: break;
+                    }
+                };
+
+                window.addEventListener('keydown', handleKeyDown);
+                return () => window.removeEventListener('keydown', handleKeyDown);
+            }, [currentStep, currentIndex, responses, questions]);
+
+            const handleSubmit = async () => {
+                setIsSubmitting(true);
+                
+                const data = {
+                    userData,
+                    responses,
+                    timestamp: new Date().toISOString()
+                };
+                
+                try {
+                    const response = await fetch(API_URL, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify(data)
+                    });
+
+                    if (response.ok) {
+                        const result = await response.json();
+                        console.log('Erfolgreich gespeichert:', result);
+                        setCurrentStep('success');
+                    } else {
+                        throw new Error('Server-Fehler');
+                    }
+                } catch (error) {
+                    console.error('Fehler beim Senden:', error);
+                    alert('Es gab einen Fehler beim Speichern. Bitte versuchen Sie es erneut.');
+                } finally {
+                    setIsSubmitting(false);
+                }
+            };
+
+            // Loading-Screen
+            if (isLoading) {
+                return (
+                    <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 flex items-center justify-center p-4">
+                        <div className="bg-white rounded-2xl shadow-xl p-8 max-w-md w-full text-center">
+                            <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-green-600 mx-auto mb-4"></div>
+                            <p className="text-gray-600">Fragen werden geladen...</p>
+                        </div>
+                    </div>
+                );
+            }
+
+            // Error-Screen
+            if (error) {
+                return (
+                    <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 flex items-center justify-center p-4">
+                        <div className="bg-white rounded-2xl shadow-xl p-8 max-w-md w-full text-center">
+                            <div className="text-6xl mb-4">⚠️</div>
+                            <h2 className="text-2xl font-bold text-red-600 mb-4">Fehler</h2>
+                            <p className="text-gray-600 mb-6">{error}</p>
+                            <button
+                                onClick={() => window.location.reload()}
+                                className="bg-green-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-green-700 transition"
+                            >
+                                Seite neu laden
+                            </button>
+                        </div>
+                    </div>
+                );
+            }
+
+            // Intro-Screen
+            if (currentStep === 'intro') {
+                return (
+                    <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 flex items-center justify-center p-4">
+                        <div className="bg-white rounded-2xl shadow-xl p-8 max-w-md w-full">
+                            <h1 className="text-3xl font-bold text-green-700 mb-4">Volketswil mitgestalten</h1>
+                            <p className="text-gray-600 mb-6">
+                                Helfen Sie mit, die wichtigsten Themen für Volketswil zu identifizieren. 
+                                Die Befragung dauert ca. 7-10 Minuten.
+                            </p>
+                            
+                            <div className="space-y-4">
+                                <input
+                                    type="text"
+                                    placeholder="Ihr Name"
+                                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                                    value={userData.name}
+                                    onChange={(e) => setUserData({...userData, name: e.target.value})}
+                                />
+                                <input
+                                    type="email"
+                                    placeholder="Ihre E-Mail"
+                                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                                    value={userData.email}
+                                    onChange={(e) => setUserData({...userData, email: e.target.value})}
+                                />
+                            </div>
+
+                            <div className="mt-6 p-4 bg-green-50 rounded-lg">
+                                <p className="text-sm text-gray-700 font-semibold mb-2">So funktioniert's:</p>
+                                <div className="space-y-2 text-sm text-gray-600">
+                                    <div className="flex items-center gap-2">
+                                        <ChevronUp size={16} className="text-green-600" />
+                                        <span>Nach oben: Sehr wichtig</span>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <ChevronRight size={16} className="text-blue-600" />
+                                        <span>Nach rechts: Wichtig</span>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <ChevronLeft size={16} className="text-red-600" />
+                                        <span>Nach links: Unwichtig</span>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <ChevronDown size={16} className="text-gray-600" />
+                                        <span>Nach unten: Egal</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <button
+                                onClick={() => setCurrentStep('survey')}
+                                disabled={!userData.name || !userData.email}
+                                className="w-full mt-6 bg-green-600 text-white py-3 rounded-lg font-semibold hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition"
+                            >
+                                Befragung starten ({questions.length} Fragen)
+                            </button>
+                        </div>
+                    </div>
+                );
+            }
+
+            // Survey-Screen
+            if (currentStep === 'survey') {
+                return (
+                    <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 flex flex-col">
+                        <div className="bg-white shadow-sm p-4">
+                            <div className="max-w-2xl mx-auto">
+                                <div className="flex items-center justify-between mb-2">
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-2xl">{questions[currentIndex]?.category_icon}</span>
+                                        <span className="font-semibold text-gray-700">{currentCategory}</span>
+                                    </div>
+                                    <span className="text-sm text-gray-500">
+                                        {currentIndex + 1} / {questions.length}
+                                    </span>
+                                </div>
+                                <div className="w-full bg-gray-200 rounded-full h-2">
+                                    <div 
+                                        className="bg-green-600 h-2 rounded-full transition-all duration-300"
+                                        style={{ width: `${progress}%` }}
+                                    />
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="flex-1 flex items-center justify-center p-4">
+                            <div 
+                                className={`bg-white rounded-2xl shadow-2xl p-8 max-w-lg w-full relative transition-all duration-300 ${
+                                    swipeDirection === 'up' ? 'transform -translate-y-8 opacity-0' :
+                                    swipeDirection === 'right' ? 'transform translate-x-8 opacity-0' :
+                                    swipeDirection === 'down' ? 'transform translate-y-8 opacity-0' :
+                                    swipeDirection === 'left' ? 'transform -translate-x-8 opacity-0' : ''
+                                }`}
+                                onTouchStart={handleTouchStart}
+                                onTouchEnd={handleTouchEnd}
+                            >
+                                <p className="text-xl text-gray-800 text-center leading-relaxed min-h-[120px] flex items-center justify-center">
+                                    {questions[currentIndex]?.text}
+                                </p>
+
+                                <div className="mt-8 grid grid-cols-3 gap-4">
+                                    <div className="col-start-2 flex justify-center">
+                                        <button
+                                            onClick={() => handleSwipe('up')}
+                                            className="p-4 rounded-full bg-green-100 hover:bg-green-200 transition"
+                                        >
+                                            <ChevronUp size={32} className="text-green-600" />
+                                        </button>
+                                    </div>
+                                    
+                                    <div className="col-span-3 grid grid-cols-3 gap-4">
+                                        <button
+                                            onClick={() => handleSwipe('left')}
+                                            className="p-4 rounded-full bg-red-100 hover:bg-red-200 transition"
+                                        >
+                                            <ChevronLeft size={32} className="text-red-600" />
+                                        </button>
+                                        <div />
+                                        <button
+                                            onClick={() => handleSwipe('right')}
+                                            className="p-4 rounded-full bg-blue-100 hover:bg-blue-200 transition"
+                                        >
+                                            <ChevronRight size={32} className="text-blue-600" />
+                                        </button>
+                                    </div>
+
+                                    <div className="col-start-2 flex justify-center">
+                                        <button
+                                            onClick={() => handleSwipe('down')}
+                                            className="p-4 rounded-full bg-gray-100 hover:bg-gray-200 transition"
+                                        >
+                                            <ChevronDown size={32} className="text-gray-600" />
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div className="mt-6 grid grid-cols-2 gap-2 text-xs text-gray-500 text-center">
+                                    <div className="col-start-2">↑ Sehr wichtig</div>
+                                    <div>← Unwichtig</div>
+                                    <div className="text-right">Wichtig →</div>
+                                    <div className="col-start-2">↓ Egal</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                );
+            }
+
+            // Complete-Screen
+            if (currentStep === 'complete') {
+                return (
+                    <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 flex items-center justify-center p-4">
+                        <div className="bg-white rounded-2xl shadow-xl p-8 max-w-md w-full text-center">
+                            <div className="text-6xl mb-4">🎉</div>
+                            <h2 className="text-2xl font-bold text-green-700 mb-4">Geschafft!</h2>
+                            <p className="text-gray-600 mb-6">
+                                Vielen Dank für Ihre Teilnahme, {userData.name}!
+                            </p>
+                            <p className="text-sm text-gray-500 mb-6">
+                                Wir senden Ihnen eine Zusammenfassung der Ergebnisse an:<br/>
+                                <strong>{userData.email}</strong>
+                            </p>
+                            
+                            <button
+                                onClick={handleSubmit}
+                                disabled={isSubmitting}
+                                className="w-full bg-green-600 text-white py-3 rounded-lg font-semibold hover:bg-green-700 transition flex items-center justify-center gap-2 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                            >
+                                {isSubmitting ? (
+                                    <>
+                                        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                                        Wird gesendet...
+                                    </>
+                                ) : (
+                                    <>
+                                        <Send size={20} />
+                                        Ergebnisse absenden
+                                    </>
+                                )}
+                            </button>
+                        </div>
+                    </div>
+                );
+            }
+
+            // Success-Screen
+            if (currentStep === 'success') {
+                return (
+                    <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 flex items-center justify-center p-4">
+                        <div className="bg-white rounded-2xl shadow-xl p-8 max-w-md w-full text-center">
+                            <div className="text-6xl mb-4">✅</div>
+                            <h2 className="text-2xl font-bold text-green-700 mb-4">Erfolgreich gesendet!</h2>
+                            <p className="text-gray-600 mb-4">
+                                Vielen Dank für Ihre Teilnahme, {userData.name}!
+                            </p>
+                            <p className="text-sm text-gray-500 mb-6">
+                                Sie erhalten in Kürze eine E-Mail mit Ihrer persönlichen Zusammenfassung an <strong>{userData.email}</strong>.
+                            </p>
+                            <div className="p-4 bg-green-50 rounded-lg text-left">
+                                <p className="text-sm text-gray-700">
+                                    Ihre Stimme zählt! Die Ergebnisse dieser Befragung helfen dabei, 
+                                    die wichtigsten Themen für Volketswil zu identifizieren und gezielt anzugehen.
+                                </p>
+                            </div>
+                            <p className="text-xs text-gray-400 mt-6">
+                                Michael Grüebler - Kandidat Gemeinderat Volketswil
+                            </p>
+                        </div>
+                    </div>
+                );
+            }
+
+            return null;
+        };
+
+        // App rendern
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<SurveyApp />);
+    </script>
+</body>
+</html>
