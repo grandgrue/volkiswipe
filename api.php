@@ -90,9 +90,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $isAutoSave = $data['isAutoSave'] ?? false;
     $sendEmail = $data['sendEmail'] ?? false;
     
-    // Name ist jetzt optional
-    if (empty($name)) {
-        $name = 'Anonym';
+    // Name ist Pflichtfeld
+    if (empty($name) || trim($name) === '') {
+        logDebug('Name missing');
+        http_response_code(400);
+        echo json_encode(['error' => 'Name ist ein Pflichtfeld']);
+        exit();
     }
     
     // ISO-8601 Timestamp in MySQL Format konvertieren
@@ -344,25 +347,56 @@ echo json_encode(['error' => 'Methode nicht erlaubt']);
 // Funktion zum Versenden der Zusammenfassung per E-Mail
 function sendSummaryEmail($email, $name, $responses, $pdo) {
     
-    // Fragen aus der Datenbank laden (oder hardcoded)
-    $questions = getQuestions();
+    // Fragen aus der Datenbank laden
+    $stmt = $pdo->query("
+        SELECT id, category, text 
+        FROM questions 
+        WHERE active = 1 
+        ORDER BY sort_order
+    ");
+    $allQuestions = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
-    // Zähle Antworten nach Kategorie
-    $stats = [
-        'sehr_wichtig' => 0,
-        'wichtig' => 0,
-        'unwichtig' => 0,
-        'egal' => 0
+    // Fragen nach Response-Type gruppieren
+    $categorized = [
+        'sehr_wichtig' => [],
+        'wichtig' => [],
+        'unwichtig' => [],
+        'egal' => []
     ];
     
-    foreach ($responses as $response) {
-        if (isset($stats[$response])) {
-            $stats[$response]++;
+    foreach ($allQuestions as $question) {
+        $responseValue = $responses[$question['id']] ?? null;
+        if ($responseValue && isset($categorized[$responseValue])) {
+            $categorized[$responseValue][] = $question;
         }
     }
     
+    // Zähle Antworten nach Kategorie
+    $stats = [
+        'sehr_wichtig' => count($categorized['sehr_wichtig']),
+        'wichtig' => count($categorized['wichtig']),
+        'unwichtig' => count($categorized['unwichtig']),
+        'egal' => count($categorized['egal'])
+    ];
+    
     // E-Mail-Inhalt erstellen
-    $subject = 'Ihre Teilnahme: Volketswil mitgestalten';
+    $subject = 'Ihre Teilnahme: 100 Wuensche fuer Volketswil';
+    
+    // Funktion zum Erstellen der Listen
+    function createQuestionList($questions) {
+        if (empty($questions)) {
+            return '<p style="color: #999; font-style: italic;">Keine Fragen in dieser Kategorie</p>';
+        }
+        
+        $html = '<ul style="list-style-type: none; padding-left: 0; margin: 10px 0;">';
+        foreach ($questions as $question) {
+            $html .= '<li style="margin: 8px 0; padding: 8px; background: #f9fafb; border-radius: 6px;">';
+            $html .= '• ' . htmlspecialchars($question['text']);
+            $html .= '</li>';
+        }
+        $html .= '</ul>';
+        return $html;
+    }
     
     $message = "
     <html>
@@ -370,42 +404,71 @@ function sendSummaryEmail($email, $name, $responses, $pdo) {
         <meta charset='UTF-8'>
         <style>
             body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-            .header { background-color: #16a34a; color: white; padding: 20px; text-align: center; }
-            .content { padding: 20px; }
-            .stats { background-color: #f0fdf4; padding: 15px; border-radius: 8px; margin: 20px 0; }
-            .stat-item { margin: 10px 0; }
-            .footer { background-color: #f3f4f6; padding: 15px; text-align: center; font-size: 12px; color: #666; }
+            .header { background-color: #16a34a; color: white; padding: 30px 20px; text-align: center; }
+            .content { padding: 20px; max-width: 800px; margin: 0 auto; }
+            .stats { background-color: #f0fdf4; padding: 20px; border-radius: 8px; margin: 20px 0; }
+            .stat-item { margin: 10px 0; font-size: 16px; }
+            .section { margin: 30px 0; padding: 20px; border-radius: 8px; }
+            .section-sehr-wichtig { background-color: #f0fdf4; border-left: 4px solid #16a34a; }
+            .section-wichtig { background-color: #eff6ff; border-left: 4px solid #2563eb; }
+            .section-unwichtig { background-color: #fef2f2; border-left: 4px solid #dc2626; }
+            .section-egal { background-color: #f9fafb; border-left: 4px solid #6b7280; }
+            .section h3 { margin-top: 0; margin-bottom: 15px; }
+            .footer { background-color: #f3f4f6; padding: 20px; text-align: center; font-size: 12px; color: #666; margin-top: 30px; }
         </style>
     </head>
     <body>
         <div class='header'>
-            <h1>Vielen Dank fuer Ihre Teilnahme!</h1>
+            <h1>🎄 Vielen Dank fuer Ihre Teilnahme!</h1>
         </div>
         <div class='content'>
-            <p>Liebe/r $name,</p>
-            <p>Herzlichen Dank, dass Sie sich die Zeit genommen haben, an unserer Umfrage teilzunehmen. 
+            <p style='font-size: 18px;'>Liebe/r $name,</p>
+            <p>Herzlichen Dank, dass Sie sich die Zeit genommen haben, an der Befragung teilzunehmen. 
             Ihre Meinung ist wichtig fuer die Zukunft von Volketswil.</p>
             
             <div class='stats'>
-                <h3>Ihre Antworten im Ueberblick:</h3>
+                <h3 style='margin-top: 0;'>Ihre Antworten im Ueberblick:</h3>
                 <div class='stat-item'>✅ <strong>Sehr wichtig:</strong> {$stats['sehr_wichtig']} Themen</div>
                 <div class='stat-item'>👍 <strong>Wichtig:</strong> {$stats['wichtig']} Themen</div>
                 <div class='stat-item'>👎 <strong>Unwichtig:</strong> {$stats['unwichtig']} Themen</div>
-                <div class='stat-item'>😐 <strong>Egal:</strong> {$stats['egal']} Themen</div>
+                <div class='stat-item'>😐 <strong>Egal / Weiss nicht:</strong> {$stats['egal']} Themen</div>
             </div>
             
-            <p>Ihre Prioritaeten zeigen, dass Ihnen besonders die Themen am Herzen liegen, 
-            die Sie als 'sehr wichtig' oder 'wichtig' bewertet haben.</p>
+            <h2 style='color: #16a34a; margin-top: 40px;'>Ihre detaillierten Antworten:</h2>
             
-            <p>In den kommenden Wochen werden wir die Ergebnisse aller Teilnehmenden auswerten 
-            und die wichtigsten Themen fuer Volketswil identifizieren.</p>
+            <div class='section section-sehr-wichtig'>
+                <h3 style='color: #16a34a;'>✅ Sehr wichtig ({$stats['sehr_wichtig']})</h3>
+                " . createQuestionList($categorized['sehr_wichtig']) . "
+            </div>
             
-            <p>Mit freundlichen Gruessen<br>
-            <strong>Michael Gruebler</strong><br>
-            Kandidat Gemeinderat Volketswil</p>
+            <div class='section section-wichtig'>
+                <h3 style='color: #2563eb;'>👍 Wichtig ({$stats['wichtig']})</h3>
+                " . createQuestionList($categorized['wichtig']) . "
+            </div>
+            
+            <div class='section section-unwichtig'>
+                <h3 style='color: #dc2626;'>👎 Unwichtig ({$stats['unwichtig']})</h3>
+                " . createQuestionList($categorized['unwichtig']) . "
+            </div>
+            
+            <div class='section section-egal'>
+                <h3 style='color: #6b7280;'>😐 Egal / Weiss nicht ({$stats['egal']})</h3>
+                " . createQuestionList($categorized['egal']) . "
+            </div>
+            
+            <p style='margin-top: 40px;'>
+                In den kommenden Wochen werden wir die Ergebnisse aller Teilnehmenden auswerten 
+                und die wichtigsten Themen fuer Volketswil identifizieren.
+            </p>
+            
+            <p style='margin-top: 20px;'>
+                Mit freundlichen Gruessen<br>
+                <strong>Michael Gruebler</strong><br>
+                Kandidat Gemeinderat Volketswil
+            </p>
         </div>
         <div class='footer'>
-            <p>Diese E-Mail wurde automatisch generiert im Rahmen der Umfrage 'Volketswil mitgestalten'.</p>
+            <p>Diese E-Mail wurde automatisch generiert im Rahmen der Befragung '100 Wuensche fuer Volketswil'.</p>
         </div>
     </body>
     </html>
@@ -430,11 +493,7 @@ function sendSummaryEmail($email, $name, $responses, $pdo) {
 }
 
 function getQuestions() {
-    // Hier könnten die Fragen aus einer Datenbank geladen werden
-    // Für jetzt hardcoded - kann später erweitert werden
-    return [
-        0 => "Volketswil braucht mehr Tempo-30-Zonen zum Schutz von Kindern und Anwohnenden",
-        // ... weitere Fragen
-    ];
+    // Diese Funktion wird nicht mehr benötigt, da wir direkt aus der DB laden
+    return [];
 }
 ?>
