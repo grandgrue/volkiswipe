@@ -1,0 +1,54 @@
+# Volkiswipe .gitignore
+
+# Konfigurationsdatei mit sensiblen Daten
+config.php
+
+# Backup-Dateien
+*.bak
+*.backup
+*.sql.gz
+*.sql.zip
+
+# Log-Dateien
+*.log
+error_log
+
+# Temporäre Dateien
+*.tmp
+*.temp
+~*
+
+# MacOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# IDE / Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Node modules (falls Sie später Build-Tools nutzen)
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# Build-Artefakte
+dist/
+build/
+
+# Environment-Dateien
+.env
+.env.local
+.env.*.local
+
+# Uploads (falls später Datei-Uploads implementiert werden)
+uploads/
+temp/
