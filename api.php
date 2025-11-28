@@ -488,8 +488,8 @@ function sendSummaryEmail($email, $name, $responses, $pdo) {
     
     // Sender-Name OHNE Umlaute kodieren (RFC 2047)
     $senderName = '=?UTF-8?B?' . base64_encode('Michael Gruebler - Volketswil') . '?=';
-    $headers .= "From: " . $senderName . " <noreply@volkiswipe.ch>" . "\r\n";
-    $headers .= "Reply-To: " . $senderName . " <noreply@volkiswipe.ch>" . "\r\n";
+    $headers .= "From: " . $senderName . " <volki@grue.ch>" . "\r\n";
+    $headers .= "Reply-To: " . $senderName . " <volki@grue.ch>" . "\r\n";
     
     // Subject MIT Umlauten (wird automatisch kodiert)
     $encodedSubject = '=?UTF-8?B?' . base64_encode($subject) . '?=';
