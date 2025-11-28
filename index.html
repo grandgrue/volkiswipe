@@ -140,7 +140,7 @@
                     const currCategoryIndex = questions[currentIndex]?.category;
                     
                     if (prevCategoryIndex !== currCategoryIndex) {
-                        setCurrentChapter(currCategoryIndex);
+                        setCurrentChapter(currCategoryIndex); // INDEX speichern, nicht Name!
                         setShowChapterIntro(true);
                     }
                 }
@@ -149,7 +149,7 @@
             // Chapter-Intro bei Start der Umfrage
             useEffect(() => {
                 if (currentStep === 'survey' && questions.length > 0 && currentIndex === 0) {
-                    setCurrentChapter(0);
+                    setCurrentChapter(0); // INDEX 0
                     setShowChapterIntro(true);
                 }
             }, [currentStep, questions]);
@@ -561,11 +561,16 @@
                                     <h3 className="text-sm font-semibold text-gray-700 mb-3">📚 Alle Kapitel:</h3>
                                     <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
                                         {categories.map((cat, idx) => {
-                                            const isCompleted = idx < currentChapter;
-                                            const isCurrent = idx === currentChapter;
+                                            // questions[].category enthält den NAMEN, nicht den Index!
+                                            // Wir müssen den Index finden
+                                            const currentCategoryName = questions[currentIndex]?.category_name;
+                                            const currentCategoryIdx = categories.findIndex(c => c.name === currentCategoryName);
+                                            
+                                            const isCompleted = currentCategoryIdx !== -1 && idx < currentCategoryIdx;
+                                            const isCurrent = currentCategoryIdx !== -1 && idx === currentCategoryIdx;
                                             
                                             // Debug-Logging
-                                            console.log('Kategorie', idx, cat.name, '- currentChapter:', currentChapter, '- isCompleted:', isCompleted, '- isCurrent:', isCurrent);
+                                            console.log('Kategorie', idx, cat.name, '- currentCategoryName:', currentCategoryName, '- currentCategoryIdx:', currentCategoryIdx, '- isCompleted:', isCompleted, '- isCurrent:', isCurrent);
                                             
                                             // Farben direkt bestimmen
                                             let backgroundColor = '#ffffff'; // weiß (offen)
@@ -619,8 +624,8 @@
                                     </div>
                                     {/* Debug-Info */}
                                     <div className="mt-2 p-2 bg-yellow-50 rounded text-xs">
-                                        <strong>Debug:</strong> currentChapter = {currentChapter}, 
-                                        categories.length = {categories.length},
+                                        <strong>Debug:</strong> currentCategoryName = {questions[currentIndex]?.category_name}, 
+                                        currentCategoryIdx = {categories.findIndex(c => c.name === questions[currentIndex]?.category_name)},
                                         currentIndex = {currentIndex}
                                     </div>
                                 </div>
