@@ -385,117 +385,131 @@ function sendSummaryEmail($email, $name, $responses, $pdo) {
     // Funktion zum Erstellen der Listen
     function createQuestionList($questions) {
         if (empty($questions)) {
-            return '<p style="color: #999; font-style: italic;">Keine Fragen in dieser Kategorie</p>';
+            return '<p style="color:#999;font-style:italic;">Keine Fragen in dieser Kategorie</p>';
         }
         
-        $html = '<ul style="list-style-type: none; padding-left: 0; margin: 10px 0;">';
+        $html = '<ul style="list-style-type:none;padding-left:0;margin:10px 0;">';
         foreach ($questions as $question) {
-            $html .= '<li style="margin: 8px 0; padding: 8px; background: #f9fafb; border-radius: 6px;">';
-            $html .= '• ' . htmlspecialchars($question['text']);
+            $html .= '<li style="margin:8px 0;padding:8px;background:#f9fafb;border-radius:6px;">';
+            $html .= htmlspecialchars($question['text']);
             $html .= '</li>';
         }
         $html .= '</ul>';
         return $html;
     }
     
-    $message = "
-    <html>
-    <head>
-        <meta charset='UTF-8'>
-        <style>
-            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-            .header { background-color: #16a34a; color: white; padding: 30px 20px; text-align: center; }
-            .content { padding: 20px; max-width: 800px; margin: 0 auto; }
-            .stats { background-color: #f0fdf4; padding: 20px; border-radius: 8px; margin: 20px 0; }
-            .stat-item { margin: 10px 0; font-size: 16px; }
-            .section { margin: 30px 0; padding: 20px; border-radius: 8px; }
-            .section-sehr-wichtig { background-color: #f0fdf4; border-left: 4px solid #16a34a; }
-            .section-wichtig { background-color: #eff6ff; border-left: 4px solid #2563eb; }
-            .section-unwichtig { background-color: #fef2f2; border-left: 4px solid #dc2626; }
-            .section-egal { background-color: #f9fafb; border-left: 4px solid #6b7280; }
-            .section h3 { margin-top: 0; margin-bottom: 15px; }
-            .footer { background-color: #f3f4f6; padding: 20px; text-align: center; font-size: 12px; color: #666; margin-top: 30px; }
-            .signature { background-color: #f0fdf4; padding: 20px; border-radius: 8px; margin-top: 30px; }
-        </style>
-    </head>
-    <body>
-        <div class='header'>
-            <h1>🎄 Vielen Dank für Ihre Teilnahme!</h1>
-        </div>
-        <div class='content'>
-            <p style='font-size: 18px;'>Liebe/r $name,</p>
-            <p>Herzlichen Dank, dass Sie sich die Zeit genommen haben, an meiner Befragung «100 Wünsche für Volketswil» teilzunehmen. 
-            Ihre Meinung hilft mir sehr zu verstehen, was den Menschen in Volketswil wirklich wichtig ist.</p>
-            
-            <div class='stats'>
-                <h3 style='margin-top: 0;'>📊 Ihre Antworten im Überblick:</h3>
-                <div class='stat-item'>✅ <strong>Sehr wichtig:</strong> {$stats['sehr_wichtig']} Themen</div>
-                <div class='stat-item'>👍 <strong>Wichtig:</strong> {$stats['wichtig']} Themen</div>
-                <div class='stat-item'>👎 <strong>Unwichtig:</strong> {$stats['unwichtig']} Themen</div>
-                <div class='stat-item'>😐 <strong>Egal / Weiss nicht:</strong> {$stats['egal']} Themen</div>
-            </div>
-            
-            <h2 style='color: #16a34a; margin-top: 40px;'>📋 Ihre detaillierten Antworten:</h2>
-            
-            <div class='section section-sehr-wichtig'>
-                <h3 style='color: #16a34a;'>✅ Sehr wichtig ({$stats['sehr_wichtig']})</h3>
-                " . createQuestionList($categorized['sehr_wichtig']) . "
-            </div>
-            
-            <div class='section section-wichtig'>
-                <h3 style='color: #2563eb;'>👍 Wichtig ({$stats['wichtig']})</h3>
-                " . createQuestionList($categorized['wichtig']) . "
-            </div>
-            
-            <div class='section section-unwichtig'>
-                <h3 style='color: #dc2626;'>👎 Unwichtig ({$stats['unwichtig']})</h3>
-                " . createQuestionList($categorized['unwichtig']) . "
-            </div>
-            
-            <div class='section section-egal'>
-                <h3 style='color: #6b7280;'>😐 Egal / Weiss nicht ({$stats['egal']})</h3>
-                " . createQuestionList($categorized['egal']) . "
-            </div>
-            
-            <div class='signature'>
-                <p style='margin-bottom: 15px;'>
-                    In den kommenden Wochen werde ich die Ergebnisse aller Teilnehmenden auswerten. 
-                    Falls ich als Gemeinderat gewählt werde, weiss ich dann genau, wofür ich mich einsetzen soll.
-                </p>
-                <p style='margin-bottom: 15px;'>
-                    Ihre Stimme zählt! Die Ergebnisse dieser Befragung helfen mir sehr zu verstehen, 
-                    was die Bedürfnisse der Bevölkerung von Volketswil wirklich sind.
-                </p>
-                <p style='margin-top: 25px; margin-bottom: 5px;'>
-                    Mit herzlichen Grüssen
-                </p>
-                <p style='margin: 0;'>
-                    <strong style='font-size: 16px;'>Michael Grüebler</strong><br>
-                    <span style='color: #666;'>Kandidat Gemeinderat Volketswil</span>
-                </p>
-            </div>
-        </div>
-        <div class='footer'>
-            <p>Diese E-Mail wurde automatisch generiert im Rahmen der Befragung «100 Wünsche für Volketswil».</p>
-        </div>
-    </body>
-    </html>
-    ";
+    // HTML mit kürzeren Zeilen und ohne überflüssige Leerzeichen
+    $message = '<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<style>
+body{font-family:Arial,sans-serif;line-height:1.6;color:#333;}
+.header{background-color:#16a34a;color:white;padding:30px 20px;text-align:center;}
+.content{padding:20px;max-width:800px;margin:0 auto;}
+.stats{background-color:#f0fdf4;padding:20px;border-radius:8px;margin:20px 0;}
+.stat-item{margin:10px 0;font-size:16px;}
+.section{margin:30px 0;padding:20px;border-radius:8px;}
+.section-sehr-wichtig{background-color:#f0fdf4;border-left:4px solid #16a34a;}
+.section-wichtig{background-color:#eff6ff;border-left:4px solid #2563eb;}
+.section-unwichtig{background-color:#fef2f2;border-left:4px solid #dc2626;}
+.section-egal{background-color:#f9fafb;border-left:4px solid #6b7280;}
+.section h3{margin-top:0;margin-bottom:15px;}
+.footer{background-color:#f3f4f6;padding:20px;text-align:center;font-size:12px;color:#666;margin-top:30px;}
+.signature{background-color:#f0fdf4;padding:20px;border-radius:8px;margin-top:30px;}
+</style>
+</head>
+<body>
+<div class="header">
+<h1>Vielen Dank für Ihre Teilnahme!</h1>
+</div>
+<div class="content">
+<p style="font-size:18px;">Liebe/r ' . htmlspecialchars($name) . ',</p>
+<p>Herzlichen Dank, dass Sie sich die Zeit genommen haben, an meiner Befragung 
+«100 Wünsche für Volketswil» teilzunehmen. 
+Ihre Meinung hilft mir sehr zu verstehen, was den Menschen in Volketswil wichtig ist.</p>
+
+<div class="stats">
+<h3 style="margin-top:0;">Ihre Antworten im Überblick:</h3>
+<div class="stat-item"><strong>Sehr wichtig:</strong> ' . $stats['sehr_wichtig'] . ' Themen</div>
+<div class="stat-item"><strong>Wichtig:</strong> ' . $stats['wichtig'] . ' Themen</div>
+<div class="stat-item"><strong>Unwichtig:</strong> ' . $stats['unwichtig'] . ' Themen</div>
+<div class="stat-item"><strong>Egal / Weiss nicht:</strong> ' . $stats['egal'] . ' Themen</div>
+</div>
+
+<h2 style="color:#16a34a;margin-top:40px;">Ihre detaillierten Antworten:</h2>
+
+<div class="section section-sehr-wichtig">
+<h3 style="color:#16a34a;">Sehr wichtig (' . $stats['sehr_wichtig'] . ')</h3>
+' . createQuestionList($categorized['sehr_wichtig']) . '
+</div>
+
+<div class="section section-wichtig">
+<h3 style="color:#2563eb;">Wichtig (' . $stats['wichtig'] . ')</h3>
+' . createQuestionList($categorized['wichtig']) . '
+</div>
+
+<div class="section section-unwichtig">
+<h3 style="color:#dc2626;">Unwichtig (' . $stats['unwichtig'] . ')</h3>
+' . createQuestionList($categorized['unwichtig']) . '
+</div>
+
+<div class="section section-egal">
+<h3 style="color:#6b7280;">Egal / Weiss nicht (' . $stats['egal'] . ')</h3>
+' . createQuestionList($categorized['egal']) . '
+</div>
+
+<div class="signature">
+<p style="margin-bottom:15px;">
+In den kommenden Wochen werde ich die Ergebnisse aller Teilnehmenden auswerten. 
+Falls ich als Gemeinderat gewählt werde, weiss ich dann genau, 
+wofür ich mich einsetzen soll.
+</p>
+<p style="margin-bottom:15px;">
+Ihre Stimme zählt! Die Ergebnisse dieser Befragung helfen mir sehr zu verstehen, 
+was die Bedürfnisse der Bevölkerung von Volketswil wirklich sind.
+</p>
+<p style="margin-top:25px;margin-bottom:5px;">
+Mit herzlichen Grüssen
+</p>
+<p style="margin:0;">
+<strong style="font-size:16px;">Michael Grüebler</strong><br>
+<span style="color:#666;">Kandidat Gemeinderat Volketswil</span>
+</p>
+</div>
+</div>
+<div class="footer">
+<p>Diese E-Mail wurde automatisch generiert im Rahmen der Befragung 
+«100 Wünsche für Volketswil».</p>
+</div>
+</body>
+</html>';
     
-    // E-Mail-Header mit korrekter Kodierung
-    $headers = "MIME-Version: 1.0" . "\r\n";
-    $headers .= "Content-type:text/html;charset=UTF-8" . "\r\n";
+    // WICHTIG: Base64-Encoding löst das "line too long" Problem
+    // Base64 erzeugt automatisch Zeilen mit max. 76 Zeichen
+    $encodedMessage = base64_encode($message);
     
-    // Sender-Name OHNE Umlaute kodieren (RFC 2047)
-    $senderName = '=?UTF-8?B?' . base64_encode('Michael Gruebler - Volketswil') . '?=';
-    $headers .= "From: " . $senderName . " <volki@grue.ch>" . "\r\n";
-    $headers .= "Reply-To: " . $senderName . " <volki@grue.ch>" . "\r\n";
+    // Multipart-Boundary für saubere MIME-Struktur
+    $boundary = md5(time());
     
-    // Subject MIT Umlauten (wird automatisch kodiert)
+    // E-Mail-Header
+    $headers = "MIME-Version: 1.0\r\n";
+    $headers .= "Content-Type: text/html; charset=UTF-8\r\n";
+    $headers .= "Content-Transfer-Encoding: base64\r\n";
+    
+    // Sender-Name kodieren (RFC 2047)
+    $senderName = '=?UTF-8?B?' . base64_encode('Michael Grüebler - Volketswil') . '?=';
+    $headers .= "From: " . $senderName . " <volki@grue.ch>\r\n";
+    $headers .= "Reply-To: volki@grue.ch\r\n";
+    
+    // Subject kodieren
     $encodedSubject = '=?UTF-8?B?' . base64_encode($subject) . '?=';
     
+    // Base64-kodierten Body mit Zeilenumbrüchen alle 76 Zeichen
+    $body = chunk_split($encodedMessage, 76, "\r\n");
+    
     // E-Mail senden
-    if (!mail($email, $encodedSubject, $message, $headers)) {
+    if (!mail($email, $encodedSubject, $body, $headers)) {
         throw new Exception('E-Mail konnte nicht gesendet werden');
     }
 }
