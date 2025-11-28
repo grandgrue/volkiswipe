@@ -86,6 +86,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $email = trim($data['userData']['email']);
     $timestamp = $data['timestamp'];
     $responses = $data['responses'];
+    $participantId = $data['participantId'] ?? null;
+    $isAutoSave = $data['isAutoSave'] ?? false;
+    $sendEmail = $data['sendEmail'] ?? false;
+    
+    // Name ist jetzt optional
+    if (empty($name)) {
+        $name = 'Anonym';
+    }
     
     // ISO-8601 Timestamp in MySQL Format konvertieren
     try {
@@ -102,11 +110,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         'name' => $name,
         'email' => $email,
         'timestamp' => $mysqlTimestamp,
-        'response_count' => count($responses)
+        'response_count' => count($responses),
+        'participantId' => $participantId,
+        'isAutoSave' => $isAutoSave,
+        'sendEmail' => $sendEmail
     ]);
     
-    // E-Mail-Validierung
-    if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+    // E-Mail-Validierung nur wenn E-Mail angegeben und sendEmail = true
+    if ($sendEmail && !empty($email) && !filter_var($email, FILTER_VALIDATE_EMAIL)) {
         logDebug('Invalid email', ['email' => $email]);
         http_response_code(400);
         echo json_encode(['error' => 'Ungültige E-Mail-Adresse']);
@@ -118,19 +129,42 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $pdo->beginTransaction();
         logDebug('Transaction started');
         
-        // Teilnehmer speichern
-        $stmt = $pdo->prepare("
-            INSERT INTO participants (name, email, timestamp) 
-            VALUES (:name, :email, :timestamp)
-        ");
-        $stmt->execute([
-            ':name' => $name,
-            ':email' => $email,
-            ':timestamp' => $mysqlTimestamp
-        ]);
-        
-        $participantId = $pdo->lastInsertId();
-        logDebug('Participant inserted', ['id' => $participantId]);
+        // Prüfen ob Teilnehmer schon existiert (Update-Fall)
+        if ($participantId) {
+            // Participant aktualisieren
+            $stmt = $pdo->prepare("
+                UPDATE participants 
+                SET name = :name, email = :email, timestamp = :timestamp
+                WHERE id = :id
+            ");
+            $stmt->execute([
+                ':name' => $name,
+                ':email' => $email,
+                ':timestamp' => $mysqlTimestamp,
+                ':id' => $participantId
+            ]);
+            logDebug('Participant updated', ['id' => $participantId]);
+            
+            // Bestehende Antworten löschen und neu einfügen
+            $stmt = $pdo->prepare("DELETE FROM responses WHERE participant_id = :participant_id");
+            $stmt->execute([':participant_id' => $participantId]);
+            logDebug('Old responses deleted');
+            
+        } else {
+            // Neuer Teilnehmer
+            $stmt = $pdo->prepare("
+                INSERT INTO participants (name, email, timestamp) 
+                VALUES (:name, :email, :timestamp)
+            ");
+            $stmt->execute([
+                ':name' => $name,
+                ':email' => $email,
+                ':timestamp' => $mysqlTimestamp
+            ]);
+            
+            $participantId = $pdo->lastInsertId();
+            logDebug('Participant inserted', ['id' => $participantId]);
+        }
         
         // Antworten speichern
         $stmt = $pdo->prepare("
@@ -153,13 +187,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $pdo->commit();
         logDebug('Transaction committed');
         
-        // E-Mail senden
-        try {
-            sendSummaryEmail($email, $name, $responses, $pdo);
-            logDebug('Email sent successfully');
-        } catch (Exception $e) {
-            // E-Mail-Fehler sollte nicht die gesamte Anfrage scheitern lassen
-            logDebug('Email error (non-fatal)', ['error' => $e->getMessage()]);
+        // E-Mail nur senden wenn sendEmail = true und E-Mail vorhanden
+        if ($sendEmail && !empty($email)) {
+            try {
+                sendSummaryEmail($email, $name, $responses, $pdo);
+                logDebug('Email sent successfully');
+            } catch (Exception $e) {
+                // E-Mail-Fehler sollte nicht die gesamte Anfrage scheitern lassen
+                logDebug('Email error (non-fatal)', ['error' => $e->getMessage()]);
+            }
         }
         
         http_response_code(201);
@@ -167,7 +203,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'success' => true,
             'message' => 'Daten erfolgreich gespeichert',
             'participantId' => $participantId,
-            'responsesCount' => $savedCount
+            'responsesCount' => $savedCount,
+            'isAutoSave' => $isAutoSave
         ]);
         
     } catch (PDOException $e) {
